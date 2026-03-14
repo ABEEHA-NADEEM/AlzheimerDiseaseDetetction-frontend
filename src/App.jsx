@@ -7,8 +7,12 @@ import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { DoctorDashboard } from './pages/doctor/DoctorDashboard'
 import { PatientDashboard } from './pages/patient/PatientDashboard'
-import { DoctorApprovals } from './pages/doctor/DoctorApprovals'
-import { UserManagement } from './pages/doctor/UserManagement'
+import { DoctorApprovals } from './pages/admin/DoctorApproval'
+import { UserManagement } from './pages/admin/UserManagement'
+import { MyReports } from './pages/patient/MyReports'
+import { PatientProfile } from './pages/patient/PatientProfile'
+import { PatientScanHistory } from './pages/patient/PatientScanHistory'
+import { DoctorProfile } from './pages/doctor/DoctorProfile'
 // import other pages like Register, Dashboard etc later
 
 // Protected route wrapper
@@ -49,6 +53,7 @@ function AppRoutes() {
         }
       >
         <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+        <Route path="/doctor/profile" element={<DoctorProfile/>}/>
         {/* Default redirect to dashboard if /admin */}
         <Route path="/doctor" element={<Navigate to="/doctor/dashboard" replace />} />
       </Route>
@@ -62,6 +67,9 @@ function AppRoutes() {
         }
       >
         <Route path="/patient/dashboard" element={<PatientDashboard />} />
+        <Route path="/patient/reports" element={<MyReports />} />
+        <Route path="/patient/profile" element={<PatientProfile />} />
+        <Route path="/patient/history" element={<PatientScanHistory />} />
         {/* Default redirect to dashboard if /admin */}
         <Route path="/patient" element={<Navigate to="/patient/dashboard" replace />} />
       </Route>
