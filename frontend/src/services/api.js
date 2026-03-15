@@ -34,7 +34,7 @@ export const authAPI = {
     return res.json()
   },
 
-  // ── Admin only ──────────────────────────────────────────
+  // Admin only
   pendingDoctors: async () => {
     const res = await fetch(`${BASE_URL}/accounts/pending-doctors/`, {
       headers: authHeaders(),
@@ -57,12 +57,4 @@ export const authAPI = {
     })
     return res.json()
   },
-
-  allUsers: async () => {                              // ← now INSIDE the object
-    const res = await fetch(`${BASE_URL}/accounts/users/`, {
-      headers: authHeaders(),
-    })
-    return res.json()
-  },
-
-}  // ← closing bracket of authAPI object
+}
