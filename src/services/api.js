@@ -66,3 +66,4 @@ export const authAPI = {
   },
 
 }  // ← closing bracket of authAPI object
+

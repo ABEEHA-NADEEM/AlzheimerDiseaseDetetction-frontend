@@ -39,7 +39,7 @@ export function PatientScanHistory() {
         <div className="relative border-l-2 border-slate-200 ml-3 md:ml-6 space-y-8 py-4">
           {MOCK_HISTORY.map((scan) => (
             <div key={scan.id} className="relative pl-6 md:pl-8">
-              <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-teal-500 ring-4 ring-white" />
+              <div className="absolute -left-2.25 top-1 h-4 w-4 rounded-full bg-teal-500 ring-4 ring-white" />
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <h3 className="text-base font-bold text-slate-900">{scan.type}</h3>
