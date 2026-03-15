@@ -1,72 +1,79 @@
-import React, { useState, createContext, useContext } from 'react'
+import React, { useState, createContext, useContext, useEffect } from 'react'
+import { authAPI } from '../services/api'
 
-// Mock user data
-const mockUsers = {
-  'doctor@demo.com': {
-    id: '1',
-    email: 'doctor@demo.com',
-    name: 'Dr. Sarah Chen',
-    role: 'doctor',
-    approved: true,
-    specialization: 'Neurologist',
-  },
-  'patient@demo.com': {
-    id: '2',
-    email: 'patient@demo.com',
-    name: 'Robert Smith',
-    role: 'patient',
-  },
-  'admin@demo.com': {
-    id: '3',
-    email: 'admin@demo.com',
-    name: 'System Admin',
-    role: 'admin',
-  },
-}
-
-// Create Auth context
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser]       = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = (email, role) => {
-    const foundUser = mockUsers[email]
-    if (foundUser && foundUser.role === role) {
-      setUser(foundUser)
-    } else {
-      // Fallback for demo
-      setUser({
-        id: Math.random().toString(),
-        email,
-        name: email.split('@')[0],
-        role,
-        approved: role !== 'doctor',
-      })
+  // ── Restore session on page refresh ──────────────────
+  useEffect(() => {
+    const token     = localStorage.getItem('access_token')
+    const savedUser = localStorage.getItem('user')
+    if (token && savedUser) {
+      setUser(JSON.parse(savedUser))
     }
+    setLoading(false)
+  }, [])
+
+  // ── Login ─────────────────────────────────────────────
+  const login = async (email, password, role) => {
+    const data = await authAPI.login(email, password, role)
+
+    if (data.error) {
+      throw new Error(data.error)
+    }
+
+    localStorage.setItem('access_token',  data.access)
+    localStorage.setItem('refresh_token', data.refresh)
+    localStorage.setItem('user',          JSON.stringify(data.user))
+    setUser(data.user)
+
+    return data.user
   }
 
-  const logout = () => setUser(null)
+  // ── Register ──────────────────────────────────────────
+  const register = async (formData) => {
+    const data = await authAPI.register({
+      username:   formData.email.split('@')[0],
+      email:      formData.email,
+      password:   formData.password,
+      first_name: formData.name.split(' ')[0],
+      last_name:  formData.name.split(' ')[1] || '',
+      role:       formData.role,
+    })
 
-  const register = (data) => {
-    const newUser = {
-      id: Math.random().toString(),
-      email: data.email || '',
-      name: data.name || '',
-      role: data.role || 'patient',
-      approved: data.role !== 'doctor',
+    if (data.error) {
+      throw new Error(data.error)
     }
-    setUser(newUser)
+
+    // Doctors need approval — don't set session yet
+    if (formData.role !== 'doctor') {
+      localStorage.setItem('access_token',  data.access)
+      localStorage.setItem('refresh_token', data.refresh)
+      localStorage.setItem('user',          JSON.stringify(data.user))
+      setUser(data.user)
+    }
+
+    return data
+  }
+
+  // ── Logout ────────────────────────────────────────────
+  const logout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+    setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register }}>
+    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-// Custom hook to use auth
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {

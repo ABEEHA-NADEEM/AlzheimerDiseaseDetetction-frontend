@@ -8,33 +8,33 @@ import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 
 export function Register() {
-  const [name,      setName]      = useState('')
-  const [email,     setEmail]     = useState('')
-  const [password,  setPassword]  = useState('')
-  const [role,      setRole]      = useState('patient')
-  const [error,     setError]     = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('patient')
   const [isLoading, setIsLoading] = useState(false)
-
   const { register } = useAuth()
-  const navigate     = useNavigate()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    setError('')
-
     try {
-      await register({ name, email, password, role })  // ← real API call
-
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      register({
+        name,
+        email,
+        role,
+      })
       if (role === 'doctor') {
         navigate('/login', {
-          state: { message: 'Registration submitted! Pending admin approval.' },
+          state: {
+            message: 'Registration pending admin approval.',
+          },
         })
       } else {
         navigate(`/${role}/dashboard`)
       }
-    } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -54,13 +54,15 @@ export function Register() {
             <Brain className="h-10 w-10 text-white" />
           </div>
         </motion.div>
-
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
           Create an account
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <a href="/login" className="font-medium text-teal-600 hover:text-teal-500">
+          <a
+            href="/login"
+            className="font-medium text-teal-600 hover:text-teal-500"
+          >
             Sign in
           </a>
         </p>
@@ -69,7 +71,6 @@ export function Register() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <Card className="py-8 px-4 sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-
             {/* Role selection */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -93,12 +94,13 @@ export function Register() {
               </div>
               {role === 'doctor' && (
                 <p className="mt-2 text-xs text-amber-600">
-                  Doctor accounts require administrator approval before accessing the platform.
+                  Doctor accounts require administrator approval before
+                  accessing the platform.
                 </p>
               )}
             </div>
 
-            {/* Inputs */}
+            {/* Name input */}
             <div className="space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
@@ -115,6 +117,7 @@ export function Register() {
                 />
               </div>
 
+              {/* Email input */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -130,6 +133,7 @@ export function Register() {
                 />
               </div>
 
+              {/* Password input */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -146,21 +150,9 @@ export function Register() {
               </div>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg bg-rose-50 p-4 border border-rose-200"
-              >
-                <p className="text-sm font-medium text-rose-800">{error}</p>
-              </motion.div>
-            )}
-
             <Button type="submit" className="w-full" isLoading={isLoading}>
               Create Account
             </Button>
-
           </form>
         </Card>
       </div>
