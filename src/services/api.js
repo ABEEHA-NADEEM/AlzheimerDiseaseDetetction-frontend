@@ -1,90 +1,131 @@
-const BASE_URL = 'http://127.0.0.1:8000/api'
+// services/api.js
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-// ── Helper ────────────────────────────────────────────────
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-})
+const getAccessToken  = () => localStorage.getItem('access_token')
+const getRefreshToken = () => localStorage.getItem('refresh_token')
 
-// ── Auth APIs ─────────────────────────────────────────────
+function authHeaders(isFormData = false) {
+  const headers = { Authorization: `Bearer ${getAccessToken()}` }
+  if (!isFormData) headers['Content-Type'] = 'application/json'
+  return headers
+}
+
+async function request(url, options = {}) {
+  let response = await fetch(`${BASE_URL}${url}`, options)
+
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      options.headers = {
+        ...options.headers,
+        Authorization: `Bearer ${getAccessToken()}`,
+      }
+      response = await fetch(`${BASE_URL}${url}`, options)
+    } else {
+      localStorage.clear()
+      window.location.href = '/login'
+      return
+    }
+  }
+
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.error || data.detail || 'Request failed')
+  return data
+}
+
+async function refreshAccessToken() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/accounts/token/refresh/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ refresh: getRefreshToken() }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    localStorage.setItem('access_token', data.access)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const authAPI = {
 
-  // ── Public ───────────────────────────────────────────
-  register: async (data) => {
-    const res = await fetch(`${BASE_URL}/accounts/register/`, {
-      method: 'POST',
+  // ── Auth ────────────────────────────────────────────
+  login: (email, password, role) =>
+    request('/api/accounts/login/', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    return res.json()
-  },
+      body:    JSON.stringify({ email, password, role }),
+    }),
 
-  login: async (email, password, role) => {
-    const res = await fetch(`${BASE_URL}/accounts/login/`, {
-      method: 'POST',
+  register: (data) =>
+    request('/api/accounts/register/', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role }),
-    })
-    return res.json()
-  },
+      body:    JSON.stringify(data),
+    }),
 
-  me: async () => {
-    const res = await fetch(`${BASE_URL}/accounts/me/`, {
+  me: () =>
+    request('/api/accounts/me/', {
       headers: authHeaders(),
-    })
-    return res.json()
+    }),
+
+  logout: () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
   },
 
-  // ── Admin only ────────────────────────────────────────
-  pendingDoctors: async () => {
-    const res = await fetch(`${BASE_URL}/accounts/pending-doctors/`, {
+  // ── Doctor ──────────────────────────────────────────
+  predict: (formData) =>
+    request('/api/diagnoses/predict/', {
+      method:  'POST',
+      headers: authHeaders(true),
+      body:    formData,
+    }),
+
+  getDoctorReports: () =>
+    request('/api/diagnoses/doctor/reports/', {
       headers: authHeaders(),
-    })
-    return res.json()
-  },
+    }),
 
-  approveDoctor: async (userId) => {
-    const res = await fetch(`${BASE_URL}/accounts/approve/${userId}/`, {
-      method: 'POST',
+  getPatientList: () =>
+    request('/api/diagnoses/patients/', {
       headers: authHeaders(),
-    })
-    return res.json()
-  },
+    }),
 
-  rejectDoctor: async (userId) => {
-    const res = await fetch(`${BASE_URL}/accounts/reject/${userId}/`, {
-      method: 'POST',
+  // ── Admin ───────────────────────────────────────────
+  getPendingDoctors: () =>
+    request('/api/accounts/pending-doctors/', {
       headers: authHeaders(),
-    })
-    return res.json()
-  },
+    }),
 
-  allUsers: async () => {
-    const res = await fetch(`${BASE_URL}/accounts/users/`, {
+  approveDoctor: (userId) =>
+    request(`/api/accounts/approve/${userId}/`, {
+      method:  'POST',
       headers: authHeaders(),
-    })
-    return res.json()
-  },
+    }),
 
-  // ── Diagnosis ─────────────────────────────────────────
-  predict: async (formData) => {
-    // NOTE: No Content-Type header here
-    // Browser sets it automatically with correct boundary for FormData
-    const res = await fetch(`${BASE_URL}/predict/`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      },
-      body: formData,
-    })
-    return res.json()
-  },
-
-  getResult: async (scanId) => {
-    const res = await fetch(`${BASE_URL}/predict/${scanId}/`, {
+  rejectDoctor: (userId) =>
+    request(`/api/accounts/reject/${userId}/`, {
+      method:  'POST',
       headers: authHeaders(),
-    })
-    return res.json()
-  },
+    }),
 
-}  // ← closing bracket of authAPI object
+  getAllUsers: () =>
+    request('/api/accounts/users/', {
+      headers: authHeaders(),
+    }),
+
+  // ── Patient ─────────────────────────────────────────
+  getPatientReports: () =>
+    request('/api/diagnoses/patient/reports/', {
+      headers: authHeaders(),
+    }),
+
+  // ── Shared ──────────────────────────────────────────
+  getScanDetail: (scanId) =>
+    request(`/api/diagnoses/scans/${scanId}/`, {
+      headers: authHeaders(),
+    }),
+}

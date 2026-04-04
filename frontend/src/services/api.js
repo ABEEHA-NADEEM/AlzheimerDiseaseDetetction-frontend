@@ -9,6 +9,7 @@ const authHeaders = () => ({
 // ── Auth APIs ─────────────────────────────────────────────
 export const authAPI = {
 
+  // ── Public ───────────────────────────────────────────
   register: async (data) => {
     const res = await fetch(`${BASE_URL}/accounts/register/`, {
       method: 'POST',
@@ -34,7 +35,7 @@ export const authAPI = {
     return res.json()
   },
 
-  // ── Admin only ──────────────────────────────────────────
+  // ── Admin only ────────────────────────────────────────
   pendingDoctors: async () => {
     const res = await fetch(`${BASE_URL}/accounts/pending-doctors/`, {
       headers: authHeaders(),
@@ -58,12 +59,32 @@ export const authAPI = {
     return res.json()
   },
 
-  allUsers: async () => {                              // ← now INSIDE the object
+  allUsers: async () => {
     const res = await fetch(`${BASE_URL}/accounts/users/`, {
       headers: authHeaders(),
     })
     return res.json()
   },
 
-}  // ← closing bracket of authAPI object
+  // ── Diagnosis ─────────────────────────────────────────
+  predict: async (formData) => {
+    // NOTE: No Content-Type header here
+    // Browser sets it automatically with correct boundary for FormData
+    const res = await fetch(`${BASE_URL}/predict/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+      body: formData,
+    })
+    return res.json()
+  },
 
+  getResult: async (scanId) => {
+    const res = await fetch(`${BASE_URL}/predict/${scanId}/`, {
+      headers: authHeaders(),
+    })
+    return res.json()
+  },
+
+}  // ← closing bracket of authAPI object

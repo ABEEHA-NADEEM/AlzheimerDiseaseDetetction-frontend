@@ -1,24 +1,25 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Brain, Lock, Mail } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Card } from '../../components/ui/Card'
 import { useAuth } from '../../hooks/useAuth'
-import { Link } from 'react-router-dom'
 
 export function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [role, setRole] = useState('doctor')
-  const [error, setError] = useState('')
+  const [email,     setEmail]     = useState('')
+  const [password,  setPassword]  = useState('')
+  const [role,      setRole]      = useState('doctor')
+  const [error,     setError]     = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = location?.state?.from?.pathname || `/${role}/dashboard`
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
+  const location   = useLocation()
+
+  // Show message from register page (doctor pending approval)
+  const message = location?.state?.message
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -26,14 +27,8 @@ export function Login() {
     setIsLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-
-      if (password !== 'password') {
-        throw new Error('Invalid credentials. Use "password" for demo.')
-      }
-
-      login(email, role)
-      navigate(from, { replace: true })
+      const user = await login(email, password, role)  // ← real API call
+      navigate(`/${user.role}/dashboard`, { replace: true })
     } catch (err) {
       setError(err.message || 'Failed to login')
     } finally {
@@ -56,15 +51,15 @@ export function Login() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
             className="inline-flex items-center justify-center"
           >
             <div className="h-20 w-20 rounded-2xl bg-linear-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-xl shadow-teal-500/30 mb-4">
               <Brain className="h-12 w-12 text-white" />
             </div>
           </motion.div>
-          
-          <motion.h2 
+
+          <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -72,8 +67,8 @@ export function Login() {
           >
             Welcome Back
           </motion.h2>
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -89,6 +84,17 @@ export function Login() {
           </motion.p>
         </div>
 
+        {/* Success message from register (doctor approval) */}
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-lg bg-amber-50 p-4 border border-amber-200"
+          >
+            <p className="text-sm font-medium text-amber-800">{message}</p>
+          </motion.div>
+        )}
+
         {/* Login Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -97,6 +103,7 @@ export function Login() {
         >
           <Card className="py-8 px-6 sm:px-10 shadow-xl shadow-slate-200/50 border-slate-200/80">
             <form className="space-y-6" onSubmit={handleSubmit}>
+
               {/* Role Selection */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -138,7 +145,7 @@ export function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 h-12 border-slate-200 focus:border-teal-500 focus:ring-teal-500 rounded-xl"
-                      placeholder={`${role}@demo.com`}
+                      placeholder={`${role}@example.com`}
                     />
                   </div>
                 </div>
@@ -171,9 +178,7 @@ export function Login() {
                   animate={{ opacity: 1, y: 0 }}
                   className="rounded-lg bg-rose-50 p-4 border border-rose-200"
                 >
-                  <p className="text-sm font-medium text-rose-800">
-                    {error}
-                  </p>
+                  <p className="text-sm font-medium text-rose-800">{error}</p>
                 </motion.div>
               )}
 
@@ -186,8 +191,7 @@ export function Login() {
                   />
                   <span className="text-sm text-slate-600">Remember me</span>
                 </label>
-
-                <a
+                  <a     
                   href="#"
                   className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors"
                 >
@@ -196,15 +200,14 @@ export function Login() {
               </div>
 
               {/* Submit Button */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 bg-linear-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-teal-500/30 transition-all"
                 isLoading={isLoading}
               >
                 Sign In
               </Button>
 
-              
             </form>
           </Card>
         </motion.div>

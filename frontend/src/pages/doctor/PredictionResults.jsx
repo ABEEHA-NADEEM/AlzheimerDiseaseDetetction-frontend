@@ -1,15 +1,7 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  ArrowLeft,
-  Download,
-  Share2,
-  FileText,
-  Brain,
-  Activity,
-  Layers,
-} from 'lucide-react'
+import { ArrowLeft, Download, Share2, FileText, Brain, Activity, Layers, Loader } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -19,41 +11,67 @@ import { SHAPChart } from '../../components/ui/SHAPChart'
 import { LIMEExplanation } from '../../components/ui/LIMEExplanation'
 import { CounterfactualPanel } from '../../components/ui/CounterfactualPanel'
 
-const MOCK_SHAP_DATA = [
-  { feature: 'Hippocampus Volume', value: 0.85 },
-  { feature: 'Ventricle Ratio', value: 0.72 },
-  { feature: 'Cortical Thickness', value: -0.45 },
-  { feature: 'White Matter Lesions', value: 0.55 },
-  { feature: 'Brain Volume', value: -0.35 },
-  { feature: 'Temporal Lobe Atrophy', value: 0.82 },
-]
-
-const MOCK_LIME_DATA = [
-  { name: 'Hippocampal Atrophy', weight: 0.45, direction: 'positive' },
-  { name: 'Enlarged Ventricles', weight: 0.32, direction: 'positive' },
-  { name: 'Age > 65', weight: 0.15, direction: 'positive' },
-  { name: 'Normal Cortical Thickness', weight: 0.22, direction: 'negative' },
-]
-
-const MOCK_COUNTERFACTUAL = [
-  { feature: 'Hippocampus Volume', original: '2.1 cm³ (Low)', new: '> 3.0 cm³' },
-  { feature: 'Ventricle Ratio', original: '0.45 (High)', new: '< 0.30' },
-]
-
 export function PredictionResults() {
-  const { scanId } = useParams()
-  const navigate = useNavigate()
+  const { scanId }   = useParams()
+  const navigate     = useNavigate()
+  const location     = useLocation()
+
   const [activeTab, setActiveTab] = useState('gradcam')
+  const [result,    setResult]    = useState(null)
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState('')
+
+  useEffect(() => {
+    // Result passed from ScanUpload via navigate state
+    if (location.state?.result) {
+      setResult(location.state.result)
+      setLoading(false)
+    } else {
+      setError('Result not found.')
+      setLoading(false)
+    }
+  }, [location.state])
 
   const tabs = [
-    { id: 'gradcam', label: 'Grad-CAM', icon: Brain },
-    { id: 'shap', label: 'SHAP Analysis', icon: Activity },
-    { id: 'lime', label: 'LIME', icon: FileText },
-    { id: 'counterfactual', label: 'What-If', icon: Layers },
+    { id: 'gradcam',          label: 'Grad-CAM',      icon: Brain    },
+    { id: 'shap',             label: 'SHAP Analysis', icon: Activity },
+    { id: 'lime',             label: 'LIME',          icon: FileText },
+    { id: 'counterfactual',   label: 'What-If',       icon: Layers   },
   ]
+
+  // ── Badge color by diagnosis ──────────────────────────
+  const getDiagnosisBadge = (diagnosis) => {
+    const map = {
+      'Alzheimer':  'danger',
+      'MCI':        'warning',
+      'Normal':     'success',
+      'CN':         'success',
+    }
+    return map[diagnosis] || 'default'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader className="h-8 w-8 animate-spin text-teal-600" />
+      </div>
+    )
+  }
+
+  if (error || !result) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <p className="text-rose-600">{error || 'Result not found.'}</p>
+        <Button onClick={() => navigate('/doctor/upload')}>Go Back</Button>
+      </div>
+    )
+  }
+
+  const { prediction, explanations, patient } = result
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -65,7 +83,7 @@ export function PredictionResults() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Analysis Results</h1>
-            <p className="text-slate-500 mt-1">Scan ID: {scanId || 'SCN-2023-1029'}</p>
+            <p className="text-slate-500 mt-1">Scan ID: {scanId}</p>
           </div>
         </div>
         <div className="flex space-x-3">
@@ -80,45 +98,72 @@ export function PredictionResults() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Patient & Summary Panel */}
+
+        {/* Left Panel */}
         <div className="lg:col-span-1 space-y-6">
+
+          {/* Patient Details */}
           <Card className="p-6">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">Patient Details</h3>
+            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">
+              Patient Details
+            </h3>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-slate-600">Name</span>
-                <span className="font-medium text-slate-900">Robert Smith</span>
+                <span className="font-medium text-slate-900">
+                  {patient?.name || '—'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Age / Gender</span>
-                <span className="font-medium text-slate-900">72 / Male</span>
+                <span className="font-medium text-slate-900">
+                  {patient?.age || '—'} / {patient?.gender || '—'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Scan Date</span>
-                <span className="font-medium text-slate-900">Oct 24, 2023</span>
+                <span className="font-medium text-slate-900">
+                  {new Date().toLocaleDateString()}
+                </span>
               </div>
             </div>
           </Card>
 
+          {/* AI Diagnosis */}
           <Card className="p-6 border-t-4 border-t-rose-500">
-            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">AI Diagnosis</h3>
+            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">
+              AI Diagnosis
+            </h3>
             <div className="mb-6">
-              <Badge variant="danger" className="text-lg px-4 py-1 mb-4">
-                Alzheimer's Disease
+              <Badge
+                variant={getDiagnosisBadge(prediction.predicted_class)}
+                className="text-lg px-4 py-1 mb-4"
+              >
+                {prediction.predicted_class}
               </Badge>
-              <ConfidenceMeter confidence={89} diagnosis="Alzheimer" />
+              <ConfidenceMeter
+                confidence={prediction.confidence}
+                diagnosis={prediction.predicted_class}
+              />
             </div>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              The model indicates a high probability of Alzheimer's Disease,
-              primarily driven by significant hippocampal atrophy and enlarged
-              ventricles observed in the MRI scan.
-            </p>
+
+            {/* All probabilities */}
+            <div className="space-y-2 mt-4">
+              {Object.entries(prediction.all_probabilities).map(([cls, prob]) => (
+                <div key={cls} className="flex justify-between text-sm">
+                  <span className="text-slate-600">{cls}</span>
+                  <span className="font-medium text-slate-900">{prob}%</span>
+                </div>
+              ))}
+            </div>
           </Card>
+
         </div>
 
-        {/* Visualizations Panel */}
+        {/* Right Panel — Visualizations */}
         <div className="lg:col-span-2">
           <Card className="h-full flex flex-col">
+
             {/* Tabs */}
             <div className="border-b border-slate-200">
               <div className="flex overflow-x-auto px-2">
@@ -126,13 +171,11 @@ export function PredictionResults() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`
-                      flex items-center px-4 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors
+                    className={`flex items-center px-4 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors
                       ${activeTab === tab.id
                         ? 'border-teal-500 text-teal-600'
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                      }
-                    `}
+                      }`}
                   >
                     <tab.icon className="h-4 w-4 mr-2" />
                     {tab.label}
@@ -141,7 +184,7 @@ export function PredictionResults() {
               </div>
             </div>
 
-            {/* Tab Panels */}
+            {/* Tab Content */}
             <div className="p-6 flex-1 bg-slate-50/50">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -152,59 +195,81 @@ export function PredictionResults() {
                   transition={{ duration: 0.2 }}
                   className="h-full flex flex-col justify-center"
                 >
+
+                  {/* GradCAM — real image from backend */}
                   {activeTab === 'gradcam' && (
                     <div className="space-y-4">
                       <div className="text-center mb-6">
                         <h3 className="text-lg font-semibold text-slate-900">Grad-CAM Heatmap</h3>
                         <p className="text-sm text-slate-500">
-                          Highlights regions of the brain most influential to the model's prediction.
+                          Highlights regions most influential to the prediction.
                         </p>
                       </div>
-                      <HeatmapViewer />
+                      <HeatmapViewer
+                        gradCamBase64={explanations.gradcam}
+                      />
                     </div>
                   )}
 
+                  {/* SHAP — real values from backend */}
                   {activeTab === 'shap' && (
                     <div className="space-y-4">
                       <div className="text-center mb-6">
-                        <h3 className="text-lg font-semibold text-slate-900">SHAP Feature Importance</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">SHAP Analysis</h3>
                         <p className="text-sm text-slate-500">
-                          Global impact of clinical and imaging features on the diagnosis.
+                          Feature importance for this prediction.
                         </p>
                       </div>
-                      <SHAPChart data={MOCK_SHAP_DATA} />
+                      {explanations.shap ? (
+                        <img
+                          src={`data:image/png;base64,${explanations.shap}`}
+                          alt="SHAP explanation"
+                          className="w-full rounded-xl border border-slate-200"
+                        />
+                      ) : (
+                        <p className="text-center text-slate-500">SHAP not available</p>
+                      )}
                     </div>
                   )}
 
+                  {/* LIME — real values from backend */}
                   {activeTab === 'lime' && (
                     <div className="space-y-4">
                       <div className="text-center mb-6">
-                        <h3 className="text-lg font-semibold text-slate-900">LIME Local Explanation</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">LIME Explanation</h3>
                         <p className="text-sm text-slate-500">
-                          Local linear approximation of the model around this specific patient's data.
+                          Local explanation for this specific scan.
                         </p>
                       </div>
-                      <div className="max-w-lg mx-auto w-full bg-white p-6 rounded-xl border border-slate-200">
-                        <LIMEExplanation features={MOCK_LIME_DATA} />
-                      </div>
+                      {explanations.lime ? (
+                        <img
+                          src={`data:image/png;base64,${explanations.lime}`}
+                          alt="LIME explanation"
+                          className="w-full rounded-xl border border-slate-200"
+                        />
+                      ) : (
+                        <p className="text-center text-slate-500">LIME not available</p>
+                      )}
                     </div>
                   )}
 
+                  {/* Counterfactual */}
                   {activeTab === 'counterfactual' && (
                     <div className="space-y-4">
                       <div className="text-center mb-6">
                         <h3 className="text-lg font-semibold text-slate-900">Counterfactual Analysis</h3>
                         <p className="text-sm text-slate-500">
-                          What would need to change for the model to predict 'Normal' instead?
+                          What would need to change for a different prediction?
                         </p>
                       </div>
                       <CounterfactualPanel
-                        originalDiagnosis="Alzheimer's"
+                        originalDiagnosis={prediction.predicted_class}
                         counterfactualDiagnosis="Normal"
-                        changes={MOCK_COUNTERFACTUAL}
+                        changes={[]}
                       />
                     </div>
                   )}
+
                 </motion.div>
               </AnimatePresence>
             </div>

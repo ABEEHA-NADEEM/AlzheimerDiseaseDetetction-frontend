@@ -1,15 +1,31 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import {Login} from './pages/auth/Login'
+
+// Auth Pages
+import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
+
+// Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard'
-import { DashboardLayout } from './components/layout/DashboardLayout'
+import { DoctorApprovals } from './pages/admin/DoctorApproval'
+import { UserManagement } from './pages/admin/UserManagement'
+
+// Doctor Pages
 import { DoctorDashboard } from './pages/doctor/DoctorDashboard'
+import { DoctorProfile } from './pages/doctor/DoctorProfile'
+import { ScanUpload } from './pages/doctor/ScanUpload'
+import { PredictionResults } from './pages/doctor/PredictionResults'
+import { ScanHistory } from './pages/doctor/ScanHistory'
+
+// Patient Pages
 import { PatientDashboard } from './pages/patient/PatientDashboard'
-import { DoctorApprovals } from './pages/doctor/DoctorApprovals'
-import { UserManagement } from './pages/doctor/UserManagement'
-// import other pages like Register, Dashboard etc later
+import { MyReports } from './pages/patient/MyReports'
+import { PatientProfile } from './pages/patient/PatientProfile'
+import { PatientScanHistory } from './pages/patient/PatientScanHistory'
+
+// Layout
+import { DashboardLayout } from './components/layout/DashboardLayout'
 
 // Protected route wrapper
 function PrivateRoute({ children }) {
@@ -22,10 +38,9 @@ function AppRoutes() {
     <Routes>
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register/>}/>
+      <Route path="/register" element={<Register />} />
 
-      
-      {/* Admin route wrapped in DashboardLayout */}
+      {/* Admin routes */}
       <Route
         element={
           <PrivateRoute>
@@ -34,13 +49,12 @@ function AppRoutes() {
         }
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        {/* Default redirect to dashboard if /admin */}
-        <Route path='/admin/approvals' element={<DoctorApprovals/>}/>
-        <Route path='/admin/users' element={<UserManagement/>}/>
+        <Route path="/admin/approvals" element={<DoctorApprovals />} />
+        <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 
-      {/* Doctor route wrapped in DashboardLayout */}
+      {/* Doctor routes */}
       <Route
         element={
           <PrivateRoute>
@@ -49,11 +63,18 @@ function AppRoutes() {
         }
       >
         <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-        {/* Default redirect to dashboard if /admin */}
+        <Route path="/doctor/upload" element={<ScanUpload />} />
+        <Route path="/doctor/results/:scanId" element={<PredictionResults />} />
+        <Route path="/doctor/history" element={<ScanHistory />} />
+        <Route path="/doctor/profile" element={<DoctorProfile />} />
+        {/* Redirect old or unused paths to history */}
+        <Route path="/doctor/patients" element={<Navigate to="/doctor/history" replace />} />
+        <Route path="/doctor/reports" element={<Navigate to="/doctor/history" replace />} />
+        {/* Default redirect if /doctor */}
         <Route path="/doctor" element={<Navigate to="/doctor/dashboard" replace />} />
       </Route>
 
-      {/* Patient route wrapped in DashboardLayout */}
+      {/* Patient routes */}
       <Route
         element={
           <PrivateRoute>
@@ -62,10 +83,13 @@ function AppRoutes() {
         }
       >
         <Route path="/patient/dashboard" element={<PatientDashboard />} />
-        {/* Default redirect to dashboard if /admin */}
+        <Route path="/patient/reports" element={<MyReports />} />
+        <Route path="/patient/profile" element={<PatientProfile />} />
+        <Route path="/patient/history" element={<PatientScanHistory />} />
         <Route path="/patient" element={<Navigate to="/patient/dashboard" replace />} />
       </Route>
-      {/* Redirect any unknown route to login */}
+
+      {/* Redirect unknown routes to login */}
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )
