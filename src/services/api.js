@@ -28,6 +28,9 @@ async function request(url, options = {}) {
     }
   }
 
+  // 204 No Content — no body to parse
+  if (response.status === 204) return null
+
   const data = await response.json()
   if (!response.ok) throw new Error(data.error || data.detail || 'Request failed')
   return data
@@ -114,6 +117,12 @@ export const authAPI = {
 
   getAllUsers: () =>
     request('/api/accounts/users/', {
+      headers: authHeaders(),
+    }),
+
+  deleteUser: (userId) =>
+    request(`/api/accounts/users/${userId}/delete/`, {
+      method:  'DELETE',
       headers: authHeaders(),
     }),
 
