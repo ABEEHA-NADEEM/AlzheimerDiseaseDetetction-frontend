@@ -1,20 +1,145 @@
-<<<<<<< HEAD
-# React + Vite
+# Alzheimer Disease Detection System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+This repository contains a full-stack Alzheimer’s disease detection application with:
+- a Django REST API backend for user authentication, diagnosis prediction, and report management
+- a React + Vite frontend for admin, doctor, and patient dashboards
+- an MRI scan analysis model with explainability support
+- JWT authentication and role-based access control
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Architecture
 
-## React Compiler
+- Backend: `ADD-Backend`
+  - Django 6
+  - Django REST Framework
+  - PostgreSQL (Supabase configuration supported)
+  - JWT authentication via `djangorestframework_simplejwt`
+  - CORS enabled for frontend access
+  - Custom user model in `accounts`
+  - Diagnosis workflow in `diagnosis`
+  - ML model and explainers in `diagnosis/ml_model`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: `ADD-Frontend`
+  - React 18
+  - Vite
+  - Tailwind CSS
+  - React Router DOM
+  - Role-based dashboard layouts and pages for:
+    - admin
+    - doctor
+    - patient
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-=======
-# AlzheimerDiseaseDetetction-frontend
->>>>>>> b32a712bef083ba3bef55ed84cf03b4d57da98ca
+### Admin
+- View dashboard stats
+- Approve or reject doctor registrations
+- Manage users and roles
+
+### Doctor
+- Upload MRI scans
+- Create diagnosis requests
+- Access patient list and scan history
+- View detailed prediction results
+- Download PDF reports
+
+### Patient
+- View own report history
+- Access latest scan results
+- See doctor-provided diagnostic summaries
+
+### Diagnosis & ML
+- Image-based disease prediction
+- Explainability using LIME, SHAP, and Grad-CAM
+- Store results as `DiagnosisResult` records
+- Serve scan details and report metadata via API
+
+## Project Structure
+
+```text
+ADD-Backend/
+  accounts/
+  diagnosis/
+  core/
+  media/
+  requirements.txt
+
+ADD-Frontend/
+  public/
+  src/
+  package.json
+```
+
+## Backend Setup
+
+1. Open a terminal and go to the backend folder:
+   ```bash
+   cd "d:\AI PROJECT\ADD-Backend"
+   ```
+
+2. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+
+5. Start the backend server:
+   ```bash
+   python manage.py runserver
+   ```
+
+6. Default backend URL:
+   - `http://127.0.0.1:8000/`
+
+## Frontend Setup
+
+1. Open a terminal and go to the frontend folder:
+   ```bash
+   cd "d:\AI PROJECT\ADD-Frontend"
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Default frontend URL:
+   - typically `http://127.0.0.1:5173/`
+
+## API Endpoints
+
+### Accounts
+- `POST /api/accounts/register/`
+- `POST /api/accounts/login/`
+- `GET /api/accounts/me/`
+- `POST /api/accounts/token/refresh/`
+- `GET /api/accounts/pending-doctors/`
+- `POST /api/accounts/approve/<user_id>/`
+- `POST /api/accounts/reject/<user_id>/`
+- `GET /api/accounts/users/`
+
+### Diagnosis
+- `POST /api/diagnoses/predict/`
+- `GET /api/diagnoses/health/`
+- `GET /api/diagnoses/doctor/reports/`
+- `GET /api/diagnoses/patients/`
+- `GET /api/diagnoses/patient/reports/`
+- `GET /api/diagnoses/scans/<scan_id>/`
+
+
