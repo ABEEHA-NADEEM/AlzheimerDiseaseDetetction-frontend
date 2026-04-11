@@ -67,10 +67,8 @@ function AppRoutes() {
         <Route path="/doctor/results/:scanId" element={<PredictionResults />} />
         <Route path="/doctor/history" element={<ScanHistory />} />
         <Route path="/doctor/profile" element={<DoctorProfile />} />
-        {/* Redirect old or unused paths to history */}
         <Route path="/doctor/patients" element={<Navigate to="/doctor/history" replace />} />
         <Route path="/doctor/reports" element={<Navigate to="/doctor/history" replace />} />
-        {/* Default redirect if /doctor */}
         <Route path="/doctor" element={<Navigate to="/doctor/dashboard" replace />} />
       </Route>
 
@@ -86,6 +84,7 @@ function AppRoutes() {
         <Route path="/patient/reports" element={<MyReports />} />
         <Route path="/patient/profile" element={<PatientProfile />} />
         <Route path="/patient/history" element={<PatientScanHistory />} />
+        <Route path="/patient/results/:scanId" element={<PredictionResults />} />
         <Route path="/patient" element={<Navigate to="/patient/dashboard" replace />} />
       </Route>
 

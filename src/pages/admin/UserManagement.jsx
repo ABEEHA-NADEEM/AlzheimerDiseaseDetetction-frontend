@@ -5,34 +5,22 @@ import { Badge } from '../../components/ui/Badge'
 import { authAPI } from '../../services/api'
 
 export function UserManagement() {
-  const [users,     setUsers]     = useState([])
-  const [filter,    setFilter]    = useState('all')
-  const [search,    setSearch]    = useState('')
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState('')
+  const [users,   setUsers]   = useState([])
+  const [filter,  setFilter]  = useState('all')
+  const [search,  setSearch]  = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState('')
 
-  // ── Fetch all users on load ───────────────────────────
   useEffect(() => {
-    fetchUsers()
+    authAPI.getAllUsers()          // ← fixed
+      .then(data => {
+        if (Array.isArray(data)) setUsers(data)
+        else setError('Failed to load users.')
+      })
+      .catch(() => setError('Network error. Is the backend running?'))
+      .finally(() => setLoading(false))
   }, [])
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true)
-      const data = await authAPI.allUsers()
-      if (Array.isArray(data)) {
-        setUsers(data)
-      } else {
-        setError('Failed to load users.')
-      }
-    } catch (err) {
-      setError('Network error. Is the backend running?')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // ── Filter by role + search ───────────────────────────
   const filteredUsers = users.filter((u) => {
     const matchRole   = filter === 'all' || u.role === filter
     const matchSearch = u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -40,19 +28,16 @@ export function UserManagement() {
     return matchRole && matchSearch
   })
 
-  // ── Status logic ──────────────────────────────────────
   const getStatus = (user) => {
     if (user.role === 'doctor') return user.is_approved ? 'active' : 'pending'
     return 'active'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="h-8 w-8 animate-spin text-teal-600" />
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader className="h-8 w-8 animate-spin text-teal-600" />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -70,7 +55,7 @@ export function UserManagement() {
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between gap-4">
 
-          {/* Role Filter */}
+          {/* Role filter tabs */}
           <div className="flex space-x-2">
             {['all', 'doctor', 'patient', 'admin'].map((f) => (
               <button
@@ -118,60 +103,43 @@ export function UserManagement() {
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50">
-
-                  {/* User info */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                        {user.role === 'admin' ? (
-                          <Shield className="h-5 w-5" />
-                        ) : (
-                          <UserIcon className="h-5 w-5" />
-                        )}
+                      <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                        {user.role === 'admin'
+                          ? <Shield className="h-5 w-5" />
+                          : <UserIcon className="h-5 w-5" />
+                        }
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-slate-900">
-                          {user.name}
-                        </div>
-                        <div className="text-sm text-slate-500">
-                          {user.email}
-                        </div>
+                        <div className="text-sm font-medium text-slate-900">{user.name}</div>
+                        <div className="text-sm text-slate-500">{user.email}</div>
                       </div>
                     </div>
                   </td>
 
-                  {/* Role */}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="capitalize text-sm text-slate-900">
-                      {user.role}
-                    </span>
+                  <td className="px-6 py-4 whitespace-nowrap capitalize text-sm text-slate-900">
+                    {user.role}
                   </td>
 
-                  {/* Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant={getStatus(user) === 'active' ? 'success' : 'warning'}>
                       {getStatus(user)}
                     </Badge>
                   </td>
 
-                  {/* Joined date */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {user.created_at
-                      ? new Date(user.created_at).toLocaleDateString()
-                      : '—'}
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                   </td>
 
-                  {/* Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button className="text-slate-400 hover:text-slate-600">
                       <MoreVertical className="h-5 w-5" />
                     </button>
                   </td>
-
                 </tr>
               ))}
 
-              {/* Empty state */}
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
@@ -182,7 +150,6 @@ export function UserManagement() {
             </tbody>
           </table>
         </div>
-
       </Card>
     </div>
   )

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Download, Share2, FileText, Brain, Activity, Layers, Loader } from 'lucide-react'
@@ -9,7 +9,7 @@ import { ConfidenceMeter }     from '../../components/ui/ConfidenceMeter'
 import { HeatmapViewer }       from '../../components/ui/HeatmapViewer'
 import { CounterfactualPanel } from '../../components/ui/CounterfactualPanel'
 import { authAPI }             from '../../services/api'
-import { usePDFDownload }      from '../../hooks/usePDFDownload'   // ← new
+import { usePDFDownload }      from '../../hooks/usePDFDownload'
 
 const BADGE_MAP = {
   Alzheimer: 'danger',
@@ -30,26 +30,108 @@ export function PredictionResults() {
   const navigate   = useNavigate()
   const location   = useLocation()
 
-  const [activeTab, setActiveTab] = useState('gradcam')
-  const [result,    setResult]    = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState('')
+  const [activeTab,  setActiveTab]  = useState('gradcam')
+  const [result,     setResult]     = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState('')
+  const [sharing,    setSharing]    = useState(false)
 
-  // ── PDF hook ──────────────────────────────────────────────────────────────
-  const { downloadPDF, downloading } = usePDFDownload()
+  // Temporary object URL created during share — cleaned up after use
+  const shareBlobUrl = useRef(null)
+
+  const { downloadPDF, generatePDFBlob, downloading } = usePDFDownload()
 
   useEffect(() => {
     if (location.state?.result) {
-      const raw = location.state.result
-      setResult(normalise(raw))
+      setResult(normalise(location.state.result))
       setLoading(false)
       return
     }
-
     authAPI.getScanDetail(scanId)
       .then(data => { setResult(normalise(data)); setLoading(false) })
       .catch(err  => { setError(err.message);     setLoading(false) })
   }, [scanId, location.state])
+
+  // Clean up any blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (shareBlobUrl.current) URL.revokeObjectURL(shareBlobUrl.current)
+    }
+  }, [])
+
+  // ── WhatsApp share ────────────────────────────────────────────────────────
+  const handleShare = async () => {
+    if (!result) return
+    setSharing(true)
+
+    try {
+      const patientName  = result.patient?.name  || 'Patient'
+      const diagnosis    = result.prediction?.predicted_class || 'N/A'
+      const confidence   = result.prediction?.confidence ?? ''
+      const date         = result.created_at || new Date().toLocaleDateString()
+
+      // Try Web Share API first (mobile, works on Android Chrome / Safari iOS)
+      if (typeof navigator.share === 'function') {
+        // Try to share the PDF file directly if generatePDFBlob is available
+        if (typeof generatePDFBlob === 'function') {
+          try {
+            const blob = await generatePDFBlob(result)
+            const file = new File(
+              [blob],
+              `MRI_Report_${patientName.replace(/\s+/g, '_')}_${scanId}.pdf`,
+              { type: 'application/pdf' }
+            )
+            if (navigator.canShare?.({ files: [file] })) {
+              await navigator.share({
+                title: `MRI Report — ${patientName}`,
+                text:  buildMessage(patientName, diagnosis, confidence, date, scanId),
+                files: [file],
+              })
+              setSharing(false)
+              return
+            }
+          } catch {
+            // fall through to text-only share
+          }
+        }
+
+        // Text-only share (no file)
+        await navigator.share({
+          title: `MRI Report — ${patientName}`,
+          text:  buildMessage(patientName, diagnosis, confidence, date, scanId),
+        })
+        setSharing(false)
+        return
+      }
+
+      // Desktop fallback: download PDF then open WhatsApp web with message
+      if (typeof generatePDFBlob === 'function') {
+        const blob    = await generatePDFBlob(result)
+        const url     = URL.createObjectURL(blob)
+        shareBlobUrl.current = url
+
+        // Trigger download
+        const a       = document.createElement('a')
+        a.href        = url
+        a.download    = `MRI_Report_${patientName.replace(/\s+/g, '_')}_${scanId}.pdf`
+        a.click()
+      }
+
+      // Open WhatsApp web with pre-filled message
+      const msg = buildMessage(patientName, diagnosis, confidence, date, scanId)
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(msg)}`,
+        '_blank',
+        'noopener,noreferrer'
+      )
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        console.error('Share failed:', err)
+      }
+    } finally {
+      setSharing(false)
+    }
+  }
 
   const role     = localStorage.getItem('role') || 'doctor'
   const backPath = role === 'patient' ? '/patient/reports' : '/doctor/dashboard'
@@ -86,9 +168,21 @@ export function PredictionResults() {
             <p className="text-slate-500 mt-1">Scan ID: {scanId}</p>
           </div>
         </div>
+
         <div className="flex space-x-3">
-          <Button variant="outline" className="gap-2">
-            <Share2 className="h-4 w-4" /> Share
+          {/* ── Share / WhatsApp button ── */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={handleShare}
+            disabled={sharing}
+            title="Share via WhatsApp (desktop: downloads PDF + opens WhatsApp)"
+          >
+            {sharing
+              ? <Loader className="h-4 w-4 animate-spin" />
+              : <Share2 className="h-4 w-4" />
+            }
+            {sharing ? 'Sharing…' : 'Share'}
           </Button>
 
           {/* ── Download PDF button ── */}
@@ -210,6 +304,19 @@ export function PredictionResults() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function buildMessage(patientName, diagnosis, confidence, date, scanId) {
+  return (
+    `🧠 *MRI Diagnosis Report*\n\n` +
+    `👤 Patient: ${patientName}\n` +
+    `📋 Diagnosis: ${diagnosis}${confidence ? ` (${confidence}% confidence)` : ''}\n` +
+    `📅 Date: ${date}\n` +
+    `🔖 Scan ID: ${scanId}\n\n` +
+    `Open your medical app to view detailed analysis and heatmaps.`
   )
 }
 
